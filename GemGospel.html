@@ -14,49 +14,69 @@
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
-            max-width: 800px;
+            max-width: 850px;
             z-index: 100;
             pointer-events: none;
         }
         .btn-group {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             pointer-events: auto;
             flex-wrap: wrap;
         }
         .btn {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border: none;
-            padding: 10px 15px;
-            border-radius: 20px;
+            padding: 12px 18px;
+            border-radius: 25px;
             cursor: pointer;
             font-weight: bold;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            font-size: 0.95rem;
+            color: #333;
         }
-        .btn:hover { background: #ffd700; transform: scale(1.05); }
-        .btn.active { background: #4a90e2; color: white; }
+        .btn:hover { background: #ffd700; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+        .btn.active { background: #4a90e2; color: white; transform: scale(1.05); }
         
         .narrative-box {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             color: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 15px;
+            padding: 24px;
+            border-radius: 20px;
+            margin-bottom: 20px;
             text-align: center;
             pointer-events: auto;
             border: 2px solid #4a90e2;
+            backdrop-filter: blur(5px);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .large-text { font-size: 1.8rem !important; line-height: 1.4; }
-        .normal-text { font-size: 1.1rem; }
+        .large-text { font-size: 2rem !important; line-height: 1.5; font-weight: bold; }
+        .normal-text { font-size: 1.2rem; line-height: 1.4; }
         
         #top-controls {
             position: absolute;
             top: 20px;
             right: 20px;
             z-index: 100;
+            display: flex;
+            gap: 10px;
         }
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            font-size: 0.9rem;
+        }
+        .control-btn:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
 </head>
 <body>
@@ -64,8 +84,8 @@
 <div id="canvas-container"></div>
 
 <div id="top-controls">
-    <button onclick="toggleLargeText()" class="btn">切換大字版</button>
-    <button onclick="resetStory()" class="btn" style="background: #ff4d4d; color: white;">重新開始</button>
+    <button onclick="toggleLargeText()" class="control-btn">切換大字版</button>
+    <button onclick="resetStory()" class="control-btn" style="background: rgba(255, 77, 77, 0.6);">重新開始</button>
 </div>
 
 <div class="ui-overlay">
@@ -73,37 +93,37 @@
         點擊下方按鈕開始福音旅程
     </div>
     <div class="btn-group">
-        <button class="btn" onclick="goToStage(1)">1. 起初創造</button>
-        <button class="btn" onclick="goToStage(2)">2. 犯罪墜落</button>
-        <button class="btn" onclick="goToStage(3)">3. 無力自救</button>
-        <button class="btn" onclick="goToStage(4)">4. 耶穌救贖</button>
-        <button class="btn" onclick="goToStage(5)">5. 榮耀復活</button>
+        <button class="btn" id="btn1" onclick="goToStage(1)">1. 起初創造</button>
+        <button class="btn" id="btn2" onclick="goToStage(2)">2. 犯罪墜落</button>
+        <button class="btn" id="btn3" onclick="goToStage(3)">3. 無力自救</button>
+        <button class="btn" id="btn4" onclick="goToStage(4)">4. 耶穌救贖</button>
+        <button class="btn" id="btn5" onclick="goToStage(5)">5. 榮耀復活</button>
     </div>
 </div>
 
 <script>
     let scene, camera, renderer, clock;
     let worldGroup, humanWorld, godWorld, bridge, person, crossBridge, lifeTree;
-    let rainParticles, thunderLight;
+    let rainParticles, thunderLight, ambientLight, sunLight;
     let currentStage = 0;
     let isLargeText = false;
 
     const stages = [
-        { title: "歡迎", text: "點擊下方按鈕，讓我們一起了解上帝對你的愛。" },
-        { title: "神起初創造", text: "神創造了美好的世界，人與神在園中快樂同在，充滿光明與喜樂。" },
-        { title: "人犯罪墜落", text: "因為罪，人與神的關係斷裂了。世界變得黑暗、恐懼，人與神從此隔絕。" },
-        { title: "人無力自救", text: "人想靠著努力、善行跨越深淵，但罪的隔閡太深，我們無法自救。" },
-        { title: "神差遣耶穌", text: "上帝愛我們，差派耶穌基督降世，祂在十字架上為我們捨命，成了橋樑。" },
-        { title: "救主已復活", text: "耶穌已經復活！信祂的人可以藉著十字架回到神面前，重享永恆生命。" }
+        { text: "歡迎來到福音橋互動之旅。點擊下方按鈕，了解上帝對你的愛。" },
+        { text: "【起初創造】神創造了美好的世界，人與神在園中快樂同在，充滿光明、平安與喜樂。" },
+        { text: "【犯罪墜落】因為罪，人與神的關係斷裂了。世界變得黑暗，人與神從此隔絕，陷入痛苦。" },
+        { text: "【無力自救】人想靠努力、行善跨越深淵，但罪的距離太遠，我們無法單憑自己回到神面前。" },
+        { text: "【耶穌救贖】神愛世人，差派耶穌降世，祂在十字架上捨命，為我們鋪平了通往神的道路。" },
+        { text: "【榮耀復活】耶穌已經復活！信祂的人可以藉著這座十字架橋樑回到神面前，重獲永恆生命。" }
     ];
 
     function init() {
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
         
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 10, 25);
-        camera.lookAt(0, 5, 0);
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 12, 28);
+        camera.lookAt(0, 4, 0);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -120,10 +140,11 @@
         createBridge();
         createRain();
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // 燈光設置
+        ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
         sunLight.position.set(10, 20, 10);
         sunLight.castShadow = true;
         scene.add(sunLight);
@@ -137,9 +158,9 @@
     }
 
     function createEnvironment() {
-
-        const voidGeo = new THREE.PlaneGeometry(100, 100);
-        const voidMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        // 地面深淵 (背景黑暗處)
+        const voidGeo = new THREE.PlaneGeometry(200, 200);
+        const voidMat = new THREE.MeshPhongMaterial({ color: 0x0a0a0a });
         const voidMesh = new THREE.Mesh(voidGeo, voidMat);
         voidMesh.rotation.x = -Math.PI / 2;
         voidMesh.position.y = -5;
@@ -148,36 +169,35 @@
 
     function createHumanWorld() {
         humanWorld = new THREE.Group();
-        const geo = new THREE.BoxGeometry(10, 5, 15);
-        const mat = new THREE.MeshPhongMaterial({ color: 0x808080 });
-        const base = new THREE.Mesh(geo, mat);
-        base.position.set(-10, 2.5, 0);
+        const baseGeo = new THREE.BoxGeometry(12, 5, 15);
+        const baseMat = new THREE.MeshPhongMaterial({ color: 0x808080 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.set(-11, 2.5, 0);
         base.receiveShadow = true;
         humanWorld.add(base);
 
-
-        for(let i=0; i<5; i++) {
+        // 裝飾性的小建築物
+        for(let i=0; i<8; i++) {
             const h = Math.random() * 3 + 1;
-            const b = new THREE.Mesh(new THREE.BoxGeometry(1, h, 1), new THREE.MeshPhongMaterial({color: 0x444444}));
-            b.position.set(-8 - Math.random()*3, 5 + h/2, (Math.random()-0.5)*8);
+            const b = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), new THREE.MeshPhongMaterial({color: 0x555555}));
+            b.position.set(-10 - Math.random()*4, 5 + h/2, (Math.random()-0.5)*10);
             humanWorld.add(b);
         }
 
-        // 小人
+        // 小人模型 (圓柱 + 球體組合)
         person = new THREE.Group();
         const body = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.3, 0.7, 16),
+            new THREE.CylinderGeometry(0.35, 0.35, 0.8, 16),
             new THREE.MeshPhongMaterial({ color: 0xffccaa })
         );
         const head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.3, 16, 16),
+            new THREE.SphereGeometry(0.35, 16, 16),
             new THREE.MeshPhongMaterial({ color: 0xffccaa })
         );
-        head.position.y = 0.35;
+        head.position.y = 0.45;
         person.add(body);
         person.add(head);
-        
-        person.position.set(-7, 5.5, 0);
+        person.position.set(-7, 5.7, 0);
         humanWorld.add(person);
 
         worldGroup.add(humanWorld);
@@ -185,24 +205,24 @@
 
     function createGodWorld() {
         godWorld = new THREE.Group();
-        const geo = new THREE.BoxGeometry(10, 5, 15);
-        const mat = new THREE.MeshPhongMaterial({ color: 0x228b22 });
-        const base = new THREE.Mesh(geo, mat);
-        base.position.set(10, 2.5, 0);
+        const baseGeo = new THREE.BoxGeometry(12, 5, 15);
+        const baseMat = new THREE.MeshPhongMaterial({ color: 0x2e8b57 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.set(11, 2.5, 0);
         base.receiveShadow = true;
         godWorld.add(base);
 
-
+        // 生命樹
         lifeTree = new THREE.Group();
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 4), new THREE.MeshPhongMaterial({color: 0x8b4513}));
-        trunk.position.y = 7;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 5), new THREE.MeshPhongMaterial({color: 0x8b4513}));
+        trunk.position.y = 7.5;
         lifeTree.add(trunk);
         
-        const leaves = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshPhongMaterial({color: 0x00ff00, emissive: 0x004400}));
-        leaves.position.y = 9.5;
+        const leaves = new THREE.Mesh(new THREE.SphereGeometry(2.5, 24, 24), new THREE.MeshPhongMaterial({color: 0x32cd32, emissive: 0x004400}));
+        leaves.position.y = 10.5;
         lifeTree.add(leaves);
         
-        lifeTree.position.set(10, 0, 0);
+        lifeTree.position.set(11, 0, 0);
         godWorld.add(lifeTree);
 
         worldGroup.add(godWorld);
@@ -210,22 +230,24 @@
 
     function createBridge() {
         bridge = new THREE.Group();
-        const geo = new THREE.BoxGeometry(10, 0.2, 3);
+        // 起初的橋樑 (完全平貼兩岸，地表高度在 5.0)
+        const geo = new THREE.BoxGeometry(10, 0.2, 4);
         const mat = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.y = 5.0;
+        mesh.position.y = 5.0; 
         bridge.add(mesh);
         bridge.visible = false;
         worldGroup.add(bridge);
 
-
+        // 十字架橋樑
         crossBridge = new THREE.Group();
-        const vPart = new THREE.Mesh(new THREE.BoxGeometry(1.5, 12, 1.5), new THREE.MeshPhongMaterial({color: 0xffd700}));
-        const hPart = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 1.5), new THREE.MeshPhongMaterial({color: 0xffd700}));
-        hPart.position.y = 2;
+        const vPart = new THREE.Mesh(new THREE.BoxGeometry(1.5, 12, 1.5), new THREE.MeshPhongMaterial({color: 0xffd700, emissive: 0x443300}));
+        const hPart = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 1.5), new THREE.MeshPhongMaterial({color: 0xffd700, emissive: 0x443300}));
+        hPart.position.y = 2.5;
         crossBridge.add(vPart);
         crossBridge.add(hPart);
         
+        // 橫臥變成橋樑
         crossBridge.rotation.z = Math.PI / 2; 
         crossBridge.position.set(0, 5.1, 0); 
         crossBridge.visible = false;
@@ -234,15 +256,15 @@
 
     function createRain() {
         const geometry = new THREE.BufferGeometry();
-        const count = 1000;
+        const count = 1500;
         const positions = new Float32Array(count * 3);
         for (let i = 0; i < count * 3; i += 3) {
-            positions[i] = (Math.random() - 0.5) * 40;
-            positions[i+1] = Math.random() * 30;
-            positions[i+2] = (Math.random() - 0.5) * 40;
+            positions[i] = (Math.random() - 0.5) * 60;
+            positions[i+1] = Math.random() * 40;
+            positions[i+2] = (Math.random() - 0.5) * 60;
         }
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        const material = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.1 });
+        const material = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.1, transparent: true, opacity: 0.6 });
         rainParticles = new THREE.Points(geometry, material);
         rainParticles.visible = false;
         scene.add(rainParticles);
@@ -252,43 +274,52 @@
         currentStage = s;
         updateUI();
         
+        // 重置狀態
         rainParticles.visible = false;
-        scene.background = new THREE.Color(0x87ceeb);
         bridge.visible = false;
         crossBridge.visible = false;
-        person.position.set(-7, 5.5, 0);
+        person.position.set(-7, 5.7, 0);
         humanWorld.children[0].material.color.set(0x808080);
+        ambientLight.intensity = 0.6;
+        sunLight.intensity = 0.8;
         
         switch(s) {
-            case 1: 
+            case 1: // 起初
                 bridge.visible = true;
                 bridge.rotation.z = 0;
                 bridge.position.y = 0; 
                 scene.background = new THREE.Color(0x87ceeb);
                 break;
-            case 2: 
+            case 2: // 犯罪
                 bridge.visible = true;
-                bridge.rotation.z = 0.3;
-                bridge.position.y = -1;
+                bridge.rotation.z = 0.35; // 斷裂傾斜
+                bridge.position.y = -1.5; // 下墜
                 rainParticles.visible = true;
                 scene.background = new THREE.Color(0x444455);
                 humanWorld.children[0].material.color.set(0x444444);
+                ambientLight.intensity = 0.3;
+                sunLight.intensity = 0.2;
                 break;
-            case 3: 
+            case 3: // 自救
                 rainParticles.visible = true;
                 scene.background = new THREE.Color(0x222233);
-                person.position.set(-5.5, 5.5, 0);
+                person.position.set(-5.5, 5.7, 0); // 走到邊緣
+                ambientLight.intensity = 0.2;
+                sunLight.intensity = 0.1;
                 break;
-            case 4: 
+            case 4: // 十字架
                 crossBridge.visible = true;
-                crossBridge.scale.set(0.1, 0.1, 0.1);
+                crossBridge.scale.set(0.01, 0.01, 0.01); // 縮放起動畫
                 scene.background = new THREE.Color(0x556677);
+                ambientLight.intensity = 0.5;
                 break;
-            case 5: 
+            case 5: // 復活
                 crossBridge.visible = true;
                 crossBridge.scale.set(1, 1, 1);
-                scene.background = new THREE.Color(0xfff0c1);
-                person.position.set(7, 5.5, 0); 
+                scene.background = new THREE.Color(0xfff5e6);
+                person.position.set(7, 5.7, 0); // 成功到達對岸
+                ambientLight.intensity = 1.0;
+                sunLight.intensity = 1.2;
                 break;
         }
     }
@@ -297,21 +328,17 @@
         const narrative = document.getElementById('narrative');
         narrative.innerText = stages[currentStage].text;
         
-        const btns = document.querySelectorAll('.btn-group .btn');
-        btns.forEach((b, i) => {
-            if (i === currentStage - 1) b.classList.add('active');
-            else b.classList.remove('active');
-        });
+        for(let i=1; i<=5; i++) {
+            const btn = document.getElementById('btn' + i);
+            if (i === currentStage) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
     }
 
     function toggleLargeText() {
         isLargeText = !isLargeText;
         const narrative = document.getElementById('narrative');
-        if (isLargeText) {
-            narrative.className = 'narrative-box large-text';
-        } else {
-            narrative.className = 'narrative-box normal-text';
-        }
+        narrative.className = isLargeText ? 'narrative-box large-text' : 'narrative-box normal-text';
     }
 
     function resetStory() {
@@ -330,32 +357,33 @@
         const delta = clock.getDelta();
         const time = clock.getElapsedTime();
 
-        if (lifeTree) lifeTree.children[1].rotation.y += 0.01;
+        // 生命樹葉子緩慢旋轉
+        if (lifeTree) lifeTree.children[1].rotation.y += 0.005;
 
+        // 下雨動畫邏輯
         if (rainParticles.visible) {
             const positions = rainParticles.geometry.attributes.position.array;
             for (let i = 1; i < positions.length; i += 3) {
-                positions[i] -= 0.5;
-                if (positions[i] < 0) positions[i] = 30;
+                positions[i] -= 0.6;
+                if (positions[i] < 0) positions[i] = 40;
             }
             rainParticles.geometry.attributes.position.needsUpdate = true;
             
-            if (Math.random() > 0.98) {
-                thunderLight.intensity = 2;
-                setTimeout(() => thunderLight.intensity = 0, 100);
+            // 隨機閃電
+            if (Math.random() > 0.985) {
+                thunderLight.intensity = 2.5;
+                setTimeout(() => thunderLight.intensity = 0, 120);
             }
         }
 
-        if (currentStage === 4 && crossBridge.visible) {
-            if (crossBridge.scale.x < 1) {
-                crossBridge.scale.x += 0.01;
-                crossBridge.scale.y += 0.01;
-                crossBridge.scale.z += 0.01;
-            }
+        // 十字架橋降臨動畫
+        if (currentStage === 4 && crossBridge.visible && crossBridge.scale.x < 1) {
+            crossBridge.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
         }
 
+        // 小人待機動畫 (呼吸感)
         if (person) {
-            person.scale.y = 1 + Math.sin(time * 3) * 0.05;
+            person.scale.y = 1 + Math.sin(time * 2.5) * 0.04;
         }
 
         renderer.render(scene, camera);
